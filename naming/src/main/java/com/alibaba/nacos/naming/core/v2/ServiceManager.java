@@ -16,9 +16,11 @@
 
 package com.alibaba.nacos.naming.core.v2;
 
+import com.alibaba.nacos.common.notify.Event;
 import com.alibaba.nacos.common.notify.NotifyCenter;
 import com.alibaba.nacos.common.utils.ConcurrentHashSet;
 import com.alibaba.nacos.naming.core.v2.event.metadata.MetadataEvent;
+import com.alibaba.nacos.naming.core.v2.metadata.NamingMetadataManager;
 import com.alibaba.nacos.naming.core.v2.pojo.Service;
 
 import java.util.HashSet;
@@ -49,6 +51,7 @@ public class ServiceManager {
     }
     
     public Set<Service> getSingletons(String namespace) {
+        // 实际都是从namespaceSingletonMaps
         return namespaceSingletonMaps.getOrDefault(namespace, new HashSet<>(1));
     }
     
@@ -59,11 +62,20 @@ public class ServiceManager {
      * @return if service is exist, return exist service, otherwise return new service
      */
     public Service getSingleton(Service service) {
+        // 未有此service,初始化一个
         singletonRepository.computeIfAbsent(service, key -> {
+            /**
+             * 且发送一个serivce元数据事件
+             * @see NamingMetadataManager#onEvent(Event)
+             */
             NotifyCenter.publishEvent(new MetadataEvent.ServiceMetadataEvent(service, false));
             return service;
         });
         Service result = singletonRepository.get(service);
+        // namespace集合没有也初石化，并把service放入
+        /**
+         * namespaceSingletonMaps用于返回service列表使用
+         */
         namespaceSingletonMaps.computeIfAbsent(result.getNamespace(), namespace -> new ConcurrentHashSet<>());
         namespaceSingletonMaps.get(result.getNamespace()).add(result);
         return result;

@@ -209,6 +209,10 @@ public final class ServiceUtil {
             if (threshold < 0) {
                 threshold = 0F;
             }
+            /**
+             * 保护阈值
+             * 健康数/所有实例 < = threshold 就会返回全部，不会
+             */
             if ((float) newHealthyCount / allInstances.size() <= threshold) {
                 Loggers.SRV_LOG.warn("protect threshold reached, return all ips, service: {}", filteredResult.getName());
                 filteredResult.setReachProtectionThreshold(true);
@@ -217,7 +221,7 @@ public final class ServiceUtil {
                             if (!i.isHealthy()) {
                                 i = InstanceUtil.deepCopy(i);
                                 // set all to `healthy` state to protect
-                                i.setHealthy(true);
+                                i.setHealthy(true); // 非健康，会生健康的返回
                             } // else deepcopy is unnecessary
                             return i;
                         })
@@ -258,6 +262,7 @@ public final class ServiceUtil {
         for (com.alibaba.nacos.api.naming.pojo.Instance ip : serviceInfo.getHosts()) {
             if (checkCluster(clusterSets, ip) && checkEnabled(enableOnly, ip)) {
                 if (!healthyOnly || ip.isHealthy()) {
+                    // 非健康都系
                     filteredInstances.add(ip);
                 }
                 if (ip.isHealthy()) {

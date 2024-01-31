@@ -131,6 +131,10 @@ public class IpPortBasedClient extends AbstractClient {
      * Init client.
      */
     public void init() {
+        /**
+         * 提交定时健康任务到延时线程池com.alibaba.nacos.naming.health，5s执行一次
+         */
+        // 临时节点的任务
         if (ephemeral) {
             beatCheckTask = new ClientBeatCheckTaskV2(this);
             HealthCheckReactor.scheduleCheck(beatCheckTask);

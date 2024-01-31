@@ -103,6 +103,7 @@ public class InstanceControllerV2 {
         checkWeight(instanceForm.getWeight());
         // build instance
         Instance instance = buildInstance(instanceForm);
+        // 注册
         instanceServiceV2.registerInstance(instanceForm.getNamespaceId(), buildCompositeServiceName(instanceForm), instance);
         NotifyCenter.publishEvent(new RegisterInstanceTraceEvent(System.currentTimeMillis(), "",
                 false, instanceForm.getNamespaceId(), instanceForm.getGroupName(), instanceForm.getServiceName(),
@@ -122,6 +123,7 @@ public class InstanceControllerV2 {
         checkWeight(instanceForm.getWeight());
         // build instance
         Instance instance = buildInstance(instanceForm);
+        // 下线
         instanceServiceV2.removeInstance(instanceForm.getNamespaceId(), buildCompositeServiceName(instanceForm), instance);
         NotifyCenter.publishEvent(new DeregisterInstanceTraceEvent(System.currentTimeMillis(), "",
                 false, DeregisterInstanceReason.REQUEST, instanceForm.getNamespaceId(), instanceForm.getGroupName(),

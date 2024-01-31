@@ -40,6 +40,9 @@ public class NamingPushRequestHandler implements ServerRequestHandler {
     public Response requestReply(Request request) {
         if (request instanceof NotifySubscriberRequest) {
             NotifySubscriberRequest notifyRequest = (NotifySubscriberRequest) request;
+            /**
+             * 收到push，更新服务列表
+             */
             serviceInfoHolder.processServiceInfo(notifyRequest.getServiceInfo());
             return new NotifySubscriberResponse();
         }

@@ -58,6 +58,7 @@ public class PushDelayTaskExecuteEngine extends NacosDelayTaskExecuteEngine {
         this.metadataManager = metadataManager;
         this.pushExecutor = pushExecutor;
         this.switchDomain = switchDomain;
+        // 启动延时线程池：定时执行对所有task执行process
         setDefaultTaskProcessor(new PushDelayTaskProcessor(this));
     }
     
@@ -101,6 +102,11 @@ public class PushDelayTaskExecuteEngine extends NacosDelayTaskExecuteEngine {
         public boolean process(NacosTask task) {
             PushDelayTask pushDelayTask = (PushDelayTask) task;
             Service service = pushDelayTask.getService();
+            // 执行任务，实际就是提交别的线程池执行
+            /**
+             * 具体push
+             * @see com.alibaba.nacos.naming.push.v2.task.PushExecuteTask#run()
+             */
             NamingExecuteTaskDispatcher.getInstance()
                     .dispatchAndExecuteTask(service, new PushExecuteTask(service, executeEngine, pushDelayTask));
             return true;

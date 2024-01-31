@@ -29,6 +29,7 @@ import com.alibaba.nacos.naming.core.v2.event.publisher.NamingEventPublisherFact
 import com.alibaba.nacos.naming.core.v2.event.service.ServiceEvent;
 import com.alibaba.nacos.naming.core.v2.pojo.InstancePublishInfo;
 import com.alibaba.nacos.naming.core.v2.pojo.Service;
+import com.alibaba.nacos.naming.push.v2.NamingSubscriberServiceV2Impl;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -45,9 +46,11 @@ import java.util.concurrent.ConcurrentMap;
  */
 @Component
 public class ClientServiceIndexesManager extends SmartSubscriber {
-    
+
+    // service，已上线的实例
     private final ConcurrentMap<Service, Set<String>> publisherIndexes = new ConcurrentHashMap<>();
-    
+
+    // service，正在订阅这个service的节点（消费者）
     private final ConcurrentMap<Service, Set<String>> subscriberIndexes = new ConcurrentHashMap<>();
     
     public ClientServiceIndexesManager() {
@@ -118,19 +121,24 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
         Service service = event.getService();
         String clientId = event.getClientId();
         if (event instanceof ClientOperationEvent.ClientRegisterServiceEvent) {
-            addPublisherIndexes(service, clientId);
+            addPublisherIndexes(service, clientId);//新增发布服务信息
         } else if (event instanceof ClientOperationEvent.ClientDeregisterServiceEvent) {
-            removePublisherIndexes(service, clientId);
+            removePublisherIndexes(service, clientId); // 下线，移除publisher中对应service下这个节点
         } else if (event instanceof ClientOperationEvent.ClientSubscribeServiceEvent) {
-            addSubscriberIndexes(service, clientId);
+            addSubscriberIndexes(service, clientId);// 新增订阅
         } else if (event instanceof ClientOperationEvent.ClientUnsubscribeServiceEvent) {
             removeSubscriberIndexes(service, clientId);
         }
     }
     
     private void addPublisherIndexes(Service service, String clientId) {
-        publisherIndexes.computeIfAbsent(service, key -> new ConcurrentHashSet<>());
+        // 把当前client加入到service的集合
+        publisherIndexes.computeIfAbsent(service, key -> new ConcurrentHashSet<>());// 无此service的集合则初始化
         publisherIndexes.get(service).add(clientId);
+        /**
+         * service内容发生改变
+         * @see NamingSubscriberServiceV2Impl#onEvent(Event)
+         */
         NotifyCenter.publishEvent(new ServiceEvent.ServiceChangedEvent(service, true));
     }
     
@@ -143,9 +151,15 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     }
     
     private void addSubscriberIndexes(Service service, String clientId) {
+        // 新增service
         subscriberIndexes.computeIfAbsent(service, key -> new ConcurrentHashSet<>());
         // Fix #5404, Only first time add need notify event.
+        // 新增订阅的节点
         if (subscriberIndexes.get(service).add(clientId)) {
+            /**
+             * 新增才加
+             * @see NamingSubscriberServiceV2Impl#onEvent(Event)
+             */
             NotifyCenter.publishEvent(new ServiceEvent.ServiceSubscribedEvent(service, clientId));
         }
     }

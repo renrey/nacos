@@ -29,6 +29,7 @@ import com.alibaba.nacos.naming.pojo.Subscriber;
 import com.alibaba.nacos.naming.push.v2.NoRequiredRetryException;
 import com.alibaba.nacos.naming.push.v2.PushConfig;
 import com.alibaba.nacos.naming.push.v2.PushDataWrapper;
+import com.alibaba.nacos.naming.push.v2.executor.PushExecutorUdpImpl;
 import com.alibaba.nacos.naming.push.v2.hook.PushResult;
 import com.alibaba.nacos.naming.push.v2.hook.PushResultHookHolder;
 
@@ -58,13 +59,19 @@ public class PushExecuteTask extends AbstractExecuteTask {
         try {
             PushDataWrapper wrapper = generatePushData();
             ClientManager clientManager = delayTaskEngine.getClientManager();
+            // 遍历节点
             for (String each : getTargetClientIds()) {
                 Client client = clientManager.getClient(each);
                 if (null == client) {
                     // means this client has disconnect
                     continue;
                 }
+                // 获取节点对service的订阅信息
                 Subscriber subscriber = clientManager.getClient(each).getSubscriber(service);
+                /**
+                 * 一般使用udp推送
+                 * @see PushExecutorUdpImpl#doPushWithCallback(String, Subscriber, PushDataWrapper, NamingPushCallback)
+                 */
                 delayTaskEngine.getPushExecutor().doPushWithCallback(each, subscriber, wrapper,
                         new ServicePushCallback(each, subscriber, wrapper.getOriginalData(), delayTask.isPushToAll()));
             }

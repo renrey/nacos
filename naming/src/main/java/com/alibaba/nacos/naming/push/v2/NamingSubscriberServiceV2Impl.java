@@ -46,6 +46,7 @@ import java.util.stream.Stream;
  * Naming subscriber service for v2.x.
  *
  * @author xiweng.yy
+ * 服务订阅相关处理
  */
 @org.springframework.stereotype.Service
 public class NamingSubscriberServiceV2Impl extends SmartSubscriber implements NamingSubscriberService {
@@ -63,6 +64,8 @@ public class NamingSubscriberServiceV2Impl extends SmartSubscriber implements Na
             NamingMetadataManager metadataManager, PushExecutorDelegate pushExecutor, SwitchDomain switchDomain) {
         this.clientManager = clientManager;
         this.indexesManager = indexesManager;
+        // 定时推送push
+        // 启动延时线程池：定时执行processTasks()，默认100ms一次
         this.delayTaskEngine = new PushDelayTaskExecuteEngine(clientManager, indexesManager, serviceStorage,
                 metadataManager, pushExecutor, switchDomain);
         NotifyCenter.registerSubscriber(this, NamingEventPublisherFactory.getInstance());
@@ -117,12 +120,14 @@ public class NamingSubscriberServiceV2Impl extends SmartSubscriber implements Na
             // If service changed, push to all subscribers.
             ServiceEvent.ServiceChangedEvent serviceChangedEvent = (ServiceEvent.ServiceChangedEvent) event;
             Service service = serviceChangedEvent.getService();
+            // 加入service信息推送任务(全局)
             delayTaskEngine.addTask(service, new PushDelayTask(service, PushConfig.getInstance().getPushTaskDelay()));
             MetricsMonitor.incrementServiceChangeCount(service.getNamespace(), service.getGroup(), service.getName());
         } else if (event instanceof ServiceEvent.ServiceSubscribedEvent) {
             // If service is subscribed by one client, only push this client.
             ServiceEvent.ServiceSubscribedEvent subscribedEvent = (ServiceEvent.ServiceSubscribedEvent) event;
             Service service = subscribedEvent.getService();
+            // 针对节点对象加入push任务,默认0.5s间隔（针对订阅者）
             delayTaskEngine.addTask(service, new PushDelayTask(service, PushConfig.getInstance().getPushTaskDelay(),
                     subscribedEvent.getClientId()));
         }

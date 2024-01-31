@@ -45,6 +45,7 @@ public class ServiceListRequestHandler extends RequestHandler<ServiceListRequest
     @Override
     @Secured(action = ActionTypes.READ)
     public ServiceListResponse handle(ServiceListRequest request, RequestMeta meta) throws NacosException {
+        // 通过ServiceManager获取服务列表
         Collection<Service> serviceSet = ServiceManager.getInstance().getSingletons(request.getNamespace());
         ServiceListResponse result = ServiceListResponse.buildSuccessResponse(0, new LinkedList<>());
         if (!serviceSet.isEmpty()) {

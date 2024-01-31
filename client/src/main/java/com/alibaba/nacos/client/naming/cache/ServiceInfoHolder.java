@@ -125,6 +125,7 @@ public class ServiceInfoHolder implements Closeable {
         NAMING_LOGGER.debug("failover-mode: {}", failoverReactor.isFailoverSwitch());
         String groupedServiceName = NamingUtils.getGroupedName(serviceName, groupName);
         String key = ServiceInfo.getKey(groupedServiceName, clusters);
+        // 故障开关打开
         if (failoverReactor.isFailoverSwitch()) {
             return failoverReactor.getService(key);
         }
@@ -165,11 +166,13 @@ public class ServiceInfoHolder implements Closeable {
             serviceInfo.setJsonFromServer(JacksonUtils.toJson(serviceInfo));
         }
         MetricsMonitor.getServiceInfoMapSizeMonitor().set(serviceInfoMap.size());
+        // 发生变化
         if (changed) {
             NAMING_LOGGER.info("current ips:({}) service: {} -> {}", serviceInfo.ipCount(), serviceInfo.getKey(),
                     JacksonUtils.toJson(serviceInfo.getHosts()));
             NotifyCenter.publishEvent(new InstancesChangeEvent(notifierEventScope, serviceInfo.getName(), serviceInfo.getGroupName(),
                     serviceInfo.getClusters(), serviceInfo.getHosts()));
+            // 写入本地缓冲
             DiskCache.write(serviceInfo, cacheDir);
         }
         return serviceInfo;
@@ -180,11 +183,13 @@ public class ServiceInfoHolder implements Closeable {
     }
     
     private boolean isChangedServiceInfo(ServiceInfo oldService, ServiceInfo newService) {
+        // 新获取的直接更新
         if (null == oldService) {
             NAMING_LOGGER.info("init new ips({}) service: {} -> {}", newService.ipCount(), newService.getKey(),
                     JacksonUtils.toJson(newService.getHosts()));
             return true;
         }
+        // 时间还更老
         if (oldService.getLastRefTime() > newService.getLastRefTime()) {
             NAMING_LOGGER.warn("out of date data received, old-t: {}, new-t: {}", oldService.getLastRefTime(),
                     newService.getLastRefTime());

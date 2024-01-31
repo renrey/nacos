@@ -32,6 +32,7 @@ import com.alibaba.nacos.naming.core.v2.client.ClientAttributes;
 import com.alibaba.nacos.naming.core.v2.client.impl.IpPortBasedClient;
 import com.alibaba.nacos.naming.core.v2.client.manager.ClientManager;
 import com.alibaba.nacos.naming.core.v2.client.manager.ClientManagerDelegate;
+import com.alibaba.nacos.naming.core.v2.client.manager.impl.EphemeralIpPortClientManager;
 import com.alibaba.nacos.naming.core.v2.index.ServiceStorage;
 import com.alibaba.nacos.naming.core.v2.metadata.InstanceMetadata;
 import com.alibaba.nacos.naming.core.v2.metadata.NamingMetadataManager;
@@ -103,9 +104,18 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
         NamingUtils.checkInstanceIsLegal(instance);
         
         boolean ephemeral = instance.isEphemeral();
+        // id：ip:端口#true(是否临时)
         String clientId = IpPortBasedClient.getClientId(instance.toInetAddr(), ephemeral);
+        /**
+         * 创建这个节点（实例）的client
+         * 启动健康坚持任务，会检查心跳检查、是否过期下线
+         */
         createIpPortClientIfAbsent(clientId);
         Service service = getService(namespaceId, serviceName, ephemeral);
+        /**
+         * 临时
+         *@see  com.alibaba.nacos.naming.core.v2.service.impl.EphemeralClientOperationServiceImpl#registerInstance(com.alibaba.nacos.naming.core.v2.pojo.Service, com.alibaba.nacos.api.naming.pojo.Instance, java.lang.String)
+         */
         clientOperationService.registerInstance(service, instance, clientId);
     }
     
@@ -118,6 +128,7 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
             return;
         }
         Service service = getService(namespaceId, serviceName, ephemeral);
+        // 下线
         clientOperationService.deregisterInstance(service, instance, clientId);
     }
     
@@ -185,10 +196,15 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
         if (subscriber.getPort() > 0 && pushService.canEnablePush(subscriber.getAgent())) {
             String clientId = IpPortBasedClient.getClientId(subscriber.getAddrStr(), true);
             createIpPortClientIfAbsent(clientId);
+            // 订阅
             clientOperationService.subscribeService(service, subscriber, clientId);
         }
+        /**
+         * 获取服务实例相关
+         */
         ServiceInfo serviceInfo = serviceStorage.getData(service);
         ServiceMetadata serviceMetadata = metadataManager.getServiceMetadata(service).orElse(null);
+        // 过滤返回服务的实例列表结果
         ServiceInfo result = ServiceUtil
                 .selectInstancesWithHealthyProtection(serviceInfo, serviceMetadata, cluster, healthOnly, true, subscriber.getIp());
         // adapt for v1.x sdk
@@ -242,6 +258,7 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
             clientBeat.setCluster(cluster);
             clientBeat.setServiceName(serviceName);
         }
+        // 心跳
         ClientBeatProcessorV2 beatProcessor = new ClientBeatProcessorV2(namespaceId, clientBeat, client);
         HealthCheckReactor.scheduleNow(beatProcessor);
         client.setLastUpdatedTime();
@@ -335,6 +352,11 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
             } else {
                 clientAttributes = new ClientAttributes();
             }
+            /**
+             * 连接相关！！！
+             * 临时
+             * @see EphemeralIpPortClientManager#clientConnected(String, ClientAttributes)
+             */
             clientManager.clientConnected(clientId, clientAttributes);
         }
     }

@@ -145,6 +145,7 @@ public class FailoverReactor implements Closeable {
         @Override
         public void run() {
             try {
+                // 故障开关
                 File switchFile = Paths.get(failoverDir, UtilAndComs.FAILOVER_SWITCH).toFile();
                 if (!switchFile.exists()) {
                     switchParams.put(FAILOVER_MODE_PARAM, Boolean.FALSE.toString());
@@ -163,6 +164,7 @@ public class FailoverReactor implements Closeable {
                         
                         for (String line : lines) {
                             String line1 = line.trim();
+                            // 等于1打开
                             if (IS_FAILOVER_MODE.equals(line1)) {
                                 switchParams.put(FAILOVER_MODE_PARAM, Boolean.TRUE.toString());
                                 NAMING_LOGGER.info("failover-mode is on");
@@ -239,6 +241,7 @@ public class FailoverReactor implements Closeable {
                             //ignore
                         }
                     }
+                    // 写入
                     if (dom != null && !CollectionUtils.isEmpty(dom.getHosts())) {
                         domMap.put(dom.getKey(), dom);
                     }
@@ -274,6 +277,7 @@ public class FailoverReactor implements Closeable {
     }
     
     public boolean isFailoverSwitch() {
+        // 故障开关
         return Boolean.parseBoolean(switchParams.get(FAILOVER_MODE_PARAM));
     }
     

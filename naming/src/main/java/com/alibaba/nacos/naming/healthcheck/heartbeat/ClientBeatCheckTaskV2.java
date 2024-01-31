@@ -32,6 +32,8 @@ import java.util.Collection;
  * Client beat check task of service for version 2.x.
  *
  * @author nkorange
+ *
+ * 针对某个临时节点实例使用健康检查
  */
 public class ClientBeatCheckTaskV2 extends AbstractExecuteTask implements BeatCheckTask, NacosHealthCheckTask {
     
@@ -68,6 +70,10 @@ public class ClientBeatCheckTaskV2 extends AbstractExecuteTask implements BeatCh
             for (Service each : services) {
                 HealthCheckInstancePublishInfo instance = (HealthCheckInstancePublishInfo) client
                         .getInstancePublishInfo(each);
+                /**
+                 * 实际使用InstanceBeatCheckTask，验证心跳、过期下线
+                 * @see InstanceBeatCheckTask#passIntercept()
+                 */
                 interceptorChain.doInterceptor(new InstanceBeatCheckTask(client, each, instance));
             }
         } catch (Exception e) {

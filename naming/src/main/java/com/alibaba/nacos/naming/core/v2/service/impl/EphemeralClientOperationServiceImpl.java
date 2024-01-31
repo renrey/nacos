@@ -20,13 +20,17 @@ import com.alibaba.nacos.api.exception.NacosException;
 import com.alibaba.nacos.api.exception.runtime.NacosRuntimeException;
 import com.alibaba.nacos.api.naming.pojo.Instance;
 import com.alibaba.nacos.api.naming.utils.NamingUtils;
+import com.alibaba.nacos.common.notify.Event;
 import com.alibaba.nacos.common.notify.NotifyCenter;
 import com.alibaba.nacos.naming.core.v2.ServiceManager;
 import com.alibaba.nacos.naming.core.v2.client.Client;
 import com.alibaba.nacos.naming.core.v2.client.manager.ClientManager;
 import com.alibaba.nacos.naming.core.v2.client.manager.ClientManagerDelegate;
+import com.alibaba.nacos.naming.core.v2.client.manager.impl.EphemeralIpPortClientManager;
 import com.alibaba.nacos.naming.core.v2.event.client.ClientOperationEvent;
 import com.alibaba.nacos.naming.core.v2.event.metadata.MetadataEvent;
+import com.alibaba.nacos.naming.core.v2.index.ClientServiceIndexesManager;
+import com.alibaba.nacos.naming.core.v2.metadata.NamingMetadataManager;
 import com.alibaba.nacos.naming.core.v2.pojo.BatchInstancePublishInfo;
 import com.alibaba.nacos.naming.core.v2.pojo.InstancePublishInfo;
 import com.alibaba.nacos.naming.core.v2.pojo.Service;
@@ -55,22 +59,39 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
-    
+
+        // 从ServiceManager获取Service对象
+        // 注意：service、namespace未保存过，都会在创建初始化
         Service singleton = ServiceManager.getInstance().getSingleton(service);
         if (!singleton.isEphemeral()) {
             throw new NacosRuntimeException(NacosException.INVALID_PARAM,
                     String.format("Current service %s is persistent service, can't register ephemeral instance.",
                             singleton.getGroupedServiceName()));
         }
+        /**
+         * 获取该节点的网络客户端
+         * @see EphemeralIpPortClientManager#getClient(String)
+         */
         Client client = clientManager.getClient(clientId);
         if (!clientIsLegal(client, clientId)) {
             return;
         }
+        // 基于instance转换
         InstancePublishInfo instanceInfo = getPublishInfo(instance);
+        // 实例信息加入到该节点的client中
         client.addServiceInstance(singleton, instanceInfo);
-        client.setLastUpdatedTime();
+        client.setLastUpdatedTime();// time更新
+
+        /**
+         * 记录service已上线的实例的节点clientid（消费者获取service的实例的数据来源！！！）
+         * @see ClientServiceIndexesManager#handleClientOperation(ClientOperationEvent)
+         */
         client.recalculateRevision();
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientRegisterServiceEvent(singleton, clientId));
+        /**
+         * 实例的元数据更新
+         * @see NamingMetadataManager#onEvent(Event)
+         */
         NotifyCenter
                 .publishEvent(new MetadataEvent.InstanceMetadataEvent(singleton, instanceInfo.getMetadataId(), false));
     }
@@ -115,8 +136,17 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
         InstancePublishInfo removedInstance = client.removeServiceInstance(singleton);
         client.setLastUpdatedTime();
         client.recalculateRevision();
+        // 做这个时并发下线，可能其他线程已经弄完了
         if (null != removedInstance) {
+            /**
+             * 下线publisher中这个节点
+             * @see ClientServiceIndexesManager#handleClientOperation(ClientOperationEvent)
+             */
             NotifyCenter.publishEvent(new ClientOperationEvent.ClientDeregisterServiceEvent(singleton, clientId));
+            /**
+             * 实例元数据更新为过期
+             * @see NamingMetadataManager#onEvent(Event)
+             */
             NotifyCenter.publishEvent(
                     new MetadataEvent.InstanceMetadataEvent(singleton, removedInstance.getMetadataId(), true));
         }
@@ -129,8 +159,16 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
         if (!clientIsLegal(client, clientId)) {
             return;
         }
+        /**
+         * 该节点记录订阅service
+         * 订阅器：记录节点订阅的service
+         */
         client.addServiceSubscriber(singleton, subscriber);
         client.setLastUpdatedTime();
+        /**
+         * 记录service新增一个节点订阅
+         * @see ClientServiceIndexesManager#handleClientOperation(ClientOperationEvent)
+         */
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientSubscribeServiceEvent(singleton, clientId));
     }
     

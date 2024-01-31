@@ -67,8 +67,10 @@ public class NamingClientProxyDelegate implements NamingClientProxy {
     
     public NamingClientProxyDelegate(String namespace, ServiceInfoHolder serviceInfoHolder, NacosClientProperties properties,
             InstancesChangeNotifier changeNotifier) throws NacosException {
+        // 更新服务列表
         this.serviceInfoUpdateService = new ServiceInfoUpdateService(properties, serviceInfoHolder, this,
                 changeNotifier);
+        // 维护的父类列表
         this.serverListManager = new ServerListManager(properties, namespace);
         this.serviceInfoHolder = serviceInfoHolder;
         this.securityProxy = new SecurityProxy(this.serverListManager.getServerList(),
@@ -167,11 +169,14 @@ public class NamingClientProxyDelegate implements NamingClientProxy {
         NAMING_LOGGER.info("[SUBSCRIBE-SERVICE] service:{}, group:{}, clusters:{} ", serviceName, groupName, clusters);
         String serviceNameWithGroup = NamingUtils.getGroupedName(serviceName, groupName);
         String serviceKey = ServiceInfo.getKey(serviceNameWithGroup, clusters);
+        /// 启动定时更新任务 @@@
         serviceInfoUpdateService.scheduleUpdateIfAbsent(serviceName, groupName, clusters);
         ServiceInfo result = serviceInfoHolder.getServiceInfoMap().get(serviceKey);
         if (null == result || !isSubscribed(serviceName, groupName, clusters)) {
+            // 发送订阅请求
             result = grpcClientProxy.subscribe(serviceName, groupName, clusters);
         }
+        // 更新结果到本地
         serviceInfoHolder.processServiceInfo(result);
         return result;
     }

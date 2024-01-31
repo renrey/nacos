@@ -58,7 +58,9 @@ public class ExpiredMetadataCleaner extends AbstractNamingCleaner {
     @Override
     public void doClean() {
         long currentTime = System.currentTimeMillis();
+        // 遍历已过期实例（）
         for (ExpiredMetadataInfo each : metadataManager.getExpiredMetadataInfos()) {
+            // 连总体过期时间都超过了
             if (currentTime - each.getCreateTime() > GlobalConfig.getExpiredMetadataExpiredTime()) {
                 removeExpiredMetadata(each);
             }

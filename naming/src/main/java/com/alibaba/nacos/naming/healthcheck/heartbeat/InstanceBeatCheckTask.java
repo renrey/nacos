@@ -41,7 +41,9 @@ public class InstanceBeatCheckTask implements Interceptable {
     private final HealthCheckInstancePublishInfo instancePublishInfo;
     
     static {
+        // 不健康(无法使用)
         CHECKERS.add(new UnhealthyInstanceChecker());
+        // 过期(删除)
         CHECKERS.add(new ExpiredInstanceChecker());
         CHECKERS.addAll(NacosServiceLoader.load(InstanceBeatChecker.class));
     }
@@ -54,6 +56,7 @@ public class InstanceBeatCheckTask implements Interceptable {
     
     @Override
     public void passIntercept() {
+        // 验证是否不健康、需要下线
         for (InstanceBeatChecker each : CHECKERS) {
             each.doCheck(client, service, instancePublishInfo);
         }

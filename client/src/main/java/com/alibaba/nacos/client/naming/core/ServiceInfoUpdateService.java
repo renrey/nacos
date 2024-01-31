@@ -107,7 +107,7 @@ public class ServiceInfoUpdateService implements Closeable {
             if (futureMap.get(serviceKey) != null) {
                 return;
             }
-            
+            // 启动更新任务
             ScheduledFuture<?> future = addTask(new UpdateTask(serviceName, groupName, clusters));
             futureMap.put(serviceKey, future);
         }
@@ -185,7 +185,8 @@ public class ServiceInfoUpdateService implements Closeable {
                     isCancel = true;
                     return;
                 }
-                
+
+                // 未有service的信息，获取
                 ServiceInfo serviceObj = serviceInfoHolder.getServiceInfoMap().get(serviceKey);
                 if (serviceObj == null) {
                     serviceObj = namingClientProxy.queryInstancesOfService(serviceName, groupName, clusters, 0, false);
@@ -193,7 +194,8 @@ public class ServiceInfoUpdateService implements Closeable {
                     lastRefTime = serviceObj.getLastRefTime();
                     return;
                 }
-                
+
+                // 超过时间主动获取
                 if (serviceObj.getLastRefTime() <= lastRefTime) {
                     serviceObj = namingClientProxy.queryInstancesOfService(serviceName, groupName, clusters, 0, false);
                     serviceInfoHolder.processServiceInfo(serviceObj);
@@ -204,6 +206,7 @@ public class ServiceInfoUpdateService implements Closeable {
                     return;
                 }
                 // TODO multiple time can be configured.
+                // 缓冲时间1*6s
                 delayTime = serviceObj.getCacheMillis() * DEFAULT_UPDATE_CACHE_TIME_MULTIPLE;
                 resetFailCount();
             } catch (NacosException e) {
@@ -212,6 +215,7 @@ public class ServiceInfoUpdateService implements Closeable {
                 handleUnknownException(e);
             } finally {
                 if (!isCancel) {
+                    // 调度下一次
                     executor.schedule(this, Math.min(delayTime << failCount, DEFAULT_DELAY * 60),
                             TimeUnit.MILLISECONDS);
                 }

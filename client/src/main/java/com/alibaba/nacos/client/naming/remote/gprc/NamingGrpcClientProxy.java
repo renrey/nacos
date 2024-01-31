@@ -285,6 +285,7 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
                 request.setSelector(JacksonUtils.toJson(selector));
             }
         }
+        // 请求
         ServiceListResponse response = requestToServer(request, ServiceListResponse.class);
         ListView<String> result = new ListView<>();
         result.setCount(response.getCount());
@@ -358,6 +359,7 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
         try {
             request.putAllHeader(
                     getSecurityHeaders(request.getNamespace(), request.getGroupName(), request.getServiceName()));
+            // 请求
             Response response =
                     requestTimeout < 0 ? rpcClient.request(request) : rpcClient.request(request, requestTimeout);
             if (ResponseCode.SUCCESS.getCode() != response.getResultCode()) {

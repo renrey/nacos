@@ -89,6 +89,9 @@ public class NamingMetadataOperateService {
         WriteRequest operationLog = WriteRequest.newBuilder().setGroup(Constants.INSTANCE_METADATA)
                 .setOperation(DataOperation.CHANGE.name()).setData(ByteString.copyFrom(serializer.serialize(operation)))
                 .build();
+        /**
+         * 集群同步元数据
+         */
         submitMetadataOperation(operationLog);
     }
     

@@ -83,7 +83,11 @@ public class ServiceStorage {
         if (!ServiceManager.getInstance().containSingleton(service)) {
             return result;
         }
+        //ServiceManager获取信息
         Service singleton = ServiceManager.getInstance().getSingleton(service);
+        /**
+         * 设置实例
+         */
         result.setHosts(getAllInstancesFromIndex(singleton));
         serviceDataIndexes.put(singleton, result);
         return result;
@@ -106,7 +110,11 @@ public class ServiceStorage {
     private List<Instance> getAllInstancesFromIndex(Service service) {
         Set<Instance> result = new HashSet<>();
         Set<String> clusters = new HashSet<>();
+        // 从publisherIndexes获取已上线的实例id
         for (String each : serviceIndexesManager.getAllClientsRegisteredService(service)) {
+            /**
+             * 获取对应实例的节点client，从里面拿到节点信息
+             */
             Optional<InstancePublishInfo> instancePublishInfo = getInstanceInfo(each, service);
             if (instancePublishInfo.isPresent()) {
                 InstancePublishInfo publishInfo = instancePublishInfo.get();

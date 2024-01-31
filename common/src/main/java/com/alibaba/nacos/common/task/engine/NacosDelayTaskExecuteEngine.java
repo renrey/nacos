@@ -63,6 +63,8 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
         super(logger);
         tasks = new ConcurrentHashMap<>(initCapacity);
         processingExecutor = ExecutorFactory.newSingleScheduledExecutorService(new NameThreadFactory(name));
+        // 延迟线程池
+        // ProcessRunnable:逻辑就是执行processTasks
         processingExecutor
                 .scheduleWithFixedDelay(new ProcessRunnable(), processInterval, processInterval, TimeUnit.MILLISECONDS);
     }
@@ -124,6 +126,7 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
     public void addTask(Object key, AbstractDelayTask newTask) {
         lock.lock();
         try {
+            // 已有任务聚合一起
             AbstractDelayTask existTask = tasks.get(key);
             if (null != existTask) {
                 newTask.merge(existTask);
@@ -140,6 +143,7 @@ public class NacosDelayTaskExecuteEngine extends AbstractNacosTaskExecuteEngine<
     protected void processTasks() {
         Collection<Object> keys = getAllTaskKeys();
         for (Object taskKey : keys) {
+            // 取出任务
             AbstractDelayTask task = removeTask(taskKey);
             if (null == task) {
                 continue;

@@ -74,6 +74,12 @@ public class EphemeralIpPortClientManager implements ClientManager {
         clients.computeIfAbsent(client.getClientId(), s -> {
             Loggers.SRV_LOG.info("Client connection {} connect", client.getClientId());
             IpPortBasedClient ipPortBasedClient = (IpPortBasedClient) client;
+            // 初始化，关键入口
+            // 启动对实例的定时任务，5s1次
+            /**
+             * 临时节点的心跳任务
+             * @see com.alibaba.nacos.naming.healthcheck.heartbeat.ClientBeatCheckTaskV2
+             */
             ipPortBasedClient.init();
             return ipPortBasedClient;
         });
@@ -127,6 +133,7 @@ public class EphemeralIpPortClientManager implements ClientManager {
         if (null != client) {
             // remote node of old version will always verify with zero revision
             if (0 == verifyData.getRevision() || client.getRevision() == verifyData.getRevision()) {
+                // 延长心跳
                 NamingExecuteTaskDispatcher.getInstance()
                         .dispatchAndExecuteTask(clientId, new ClientBeatUpdateTask(client));
                 return true;

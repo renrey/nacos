@@ -18,6 +18,7 @@ package com.alibaba.nacos.naming.healthcheck.heartbeat;
 
 import com.alibaba.nacos.api.common.Constants;
 import com.alibaba.nacos.api.naming.PreservedMetadataKeys;
+import com.alibaba.nacos.common.notify.Event;
 import com.alibaba.nacos.common.notify.NotifyCenter;
 import com.alibaba.nacos.common.trace.event.naming.HealthStateChangeTraceEvent;
 import com.alibaba.nacos.common.utils.ConvertUtils;
@@ -31,6 +32,7 @@ import com.alibaba.nacos.naming.core.v2.pojo.InstancePublishInfo;
 import com.alibaba.nacos.naming.core.v2.pojo.Service;
 import com.alibaba.nacos.naming.misc.Loggers;
 import com.alibaba.nacos.naming.misc.UtilsAndCommons;
+import com.alibaba.nacos.naming.push.v2.NamingSubscriberServiceV2Impl;
 import com.alibaba.nacos.sys.utils.ApplicationUtils;
 
 import java.util.Optional;
@@ -46,7 +48,9 @@ public class UnhealthyInstanceChecker implements InstanceBeatChecker {
     
     @Override
     public void doCheck(Client client, Service service, HealthCheckInstancePublishInfo instance) {
+        //心跳超时 preserved.heart.beat.timeout
         if (instance.isHealthy() && isUnhealthy(service, instance)) {
+            // 更新健康状态下线
             changeHealthyStatus(client, service, instance);
         }
     }
@@ -76,7 +80,14 @@ public class UnhealthyInstanceChecker implements InstanceBeatChecker {
                 .info("{POS} {IP-DISABLED} valid: {}:{}@{}@{}, region: {}, msg: client last beat: {}", instance.getIp(),
                         instance.getPort(), instance.getCluster(), service.getName(), UtilsAndCommons.LOCALHOST_SITE,
                         instance.getLastHeartBeatTime());
+        /**
+         * @see NamingSubscriberServiceV2Impl#onEvent(Event)
+         */
         NotifyCenter.publishEvent(new ServiceEvent.ServiceChangedEvent(service));
+        /**
+         * 同步集群
+         * @see com.alibaba.nacos.naming.consistency.ephemeral.distro.v2.DistroClientDataProcessor#syncToAllServer(com.alibaba.nacos.naming.core.v2.event.client.ClientEvent)
+         */
         NotifyCenter.publishEvent(new ClientEvent.ClientChangedEvent(client));
         NotifyCenter.publishEvent(new HealthStateChangeTraceEvent(System.currentTimeMillis(),
                 service.getNamespace(), service.getGroup(), service.getName(), instance.getIp(), instance.getPort(),

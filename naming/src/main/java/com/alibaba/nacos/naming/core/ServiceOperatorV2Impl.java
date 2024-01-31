@@ -155,8 +155,11 @@ public class ServiceOperatorV2Impl implements ServiceOperator {
                             .getGroupedServiceName());
         }
         Service singleton = ServiceManager.getInstance().getSingleton(service);
+        // 返回对象
         ServiceDetailInfo result = new ServiceDetailInfo();
+        // 获取service元数据
         ServiceMetadata serviceMetadata = metadataManager.getServiceMetadata(singleton).orElse(new ServiceMetadata());
+        // 生成数据
         setServiceMetadata(result, serviceMetadata, singleton);
         Map<String, ClusterInfo> clusters = new HashMap<>(2);
         for (String each : serviceStorage.getClusters(singleton)) {

@@ -77,12 +77,14 @@ public class HealthOperatorV2Impl implements HealthOperator {
         if (null == client) {
             return;
         }
+        // 之前在该节点的client中
         InstancePublishInfo oldInstance = client.getInstancePublishInfo(service);
         if (null == oldInstance) {
             return;
         }
         Instance newInstance = InstanceUtil.parseToApiInstance(service, oldInstance);
         newInstance.setHealthy(healthy);
+        // 重新注册新的状态信息
         clientOperationService.registerInstance(service, newInstance, clientId);
     }
     
